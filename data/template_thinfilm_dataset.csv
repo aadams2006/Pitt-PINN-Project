@@ -1,0 +1,4 @@
+pdms_concentration,uncoated_layer_thickness,total_film_thickness,bonded_film_thickness,withdrawal_velocity,viscosity
+0.10,0.045,0.120,0.080,1.0,0.95
+0.12,0.044,0.128,0.086,1.1,1.00
+0.15,0.043,0.136,0.091,1.2,1.07
