@@ -1,0 +1,13 @@
+{
+  "feature_columns": [
+    "pdms_concentration",
+    "uncoated_layer_thickness",
+    "total_film_thickness"
+  ],
+  "target_column": "bonded_film_thickness",
+  "model_names": [
+    "linear_regression",
+    "rfr",
+    "bpnn"
+  ]
+}

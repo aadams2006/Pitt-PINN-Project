@@ -4,7 +4,7 @@ This repository is set up for a full **8-week research workflow** to model bonde
 
 It supports:
 - Data preprocessing and validation
-- Baseline ML models (Linear, KNN, Random Forest, Gradient Boosting, MLP)
+- Baseline ML models from `src/baseline_models` (`linear_regression`, `rfr`, `bpnn`)
 - A physics-informed neural network (PINN) with soft constraints
 - Evaluation on in-distribution and out-of-distribution (OOD) splits
 - Constraint-violation reporting and simple interpretability hooks
@@ -15,22 +15,25 @@ It supports:
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+pip install -e .
 ```
 
-Prepare your dataset as CSV (see `data/template_thinfilm_dataset.csv`) with required columns:
-- `pdms_concentration`
-- `uncoated_layer_thickness`
-- `total_film_thickness`
-- `bonded_film_thickness`
-- `withdrawal_velocity` (recommended)
-- `viscosity` (recommended)
+Prepare your dataset as CSV with these core columns:
+- `Concentration (g/mL)` or `pdms_concentration`
+- `Uncoated Layer (nm)` or `uncoated_layer_thickness`
+- `Total Thickness (nm)` or `total_film_thickness`
+- `Bonded Thickness (nm)` or `bonded_film_thickness`
+
+The training pipeline normalizes these names internally and uses:
+- Features: concentration, uncoated layer thickness, total thickness
+- Target: bonded thickness
 
 Then run:
 
 ```bash
-python -m pitt_pinn.train_baselines --data data/your_dataset.csv --outdir outputs/baselines
-python -m pitt_pinn.train_pinn --data data/your_dataset.csv --outdir outputs/pinn
-python -m pitt_pinn.evaluate --data data/your_dataset.csv --pinn-model outputs/pinn/pinn_model.pt --baseline-dir outputs/baselines
+train-baselines --data data/your_dataset.csv --outdir outputs/baselines
+train-pinn --data data/your_dataset.csv --outdir outputs/pinn
+evaluate-pinn --data data/your_dataset.csv --pinn-model outputs/pinn/pinn_model.pt --baseline-dir outputs/baselines
 ```
 
 ## 2) Project Layout
@@ -63,8 +66,6 @@ The PINN objective implemented here is:
 Included soft constraints:
 - `bonded <= total` (hard-prior penalty)
 - Monotonic tendency with concentration (positive derivative target)
-- Monotonic tendency with viscosity (positive derivative target)
-- Smoothness with withdrawal velocity (curvature/gradient damping)
 
 > These are encoded as penalties to remain robust under sparse/noisy experiments.
 
@@ -81,6 +82,7 @@ Included soft constraints:
 
 Each run writes JSON and artifacts (model weights / scalers):
 - `outputs/baselines/metrics.json`
+- `outputs/baselines/metadata.json`
 - `outputs/pinn/train_history.json`
 - `outputs/pinn/pinn_model.pt`
 - `outputs/pinn/constraint_report.json`

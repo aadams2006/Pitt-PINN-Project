@@ -7,15 +7,29 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-REQUIRED_COLUMNS = [
-    "pdms_concentration",
-    "uncoated_layer_thickness",
-    "total_film_thickness",
-    "bonded_film_thickness",
-]
-
-RECOMMENDED_COLUMNS = ["withdrawal_velocity", "viscosity"]
+CONCENTRATION_COLUMN = "pdms_concentration"
+UNCOATED_LAYER_COLUMN = "uncoated_layer_thickness"
+TOTAL_THICKNESS_COLUMN = "total_film_thickness"
 TARGET_COLUMN = "bonded_film_thickness"
+
+COLUMN_ALIASES = {
+    "Concentration (g/mL)": CONCENTRATION_COLUMN,
+    "Uncoated Layer (nm)": UNCOATED_LAYER_COLUMN,
+    "Total Thickness (nm)": TOTAL_THICKNESS_COLUMN,
+    "Bonded Thickness (nm)": TARGET_COLUMN,
+}
+
+REQUIRED_COLUMNS = [
+    CONCENTRATION_COLUMN,
+    UNCOATED_LAYER_COLUMN,
+    TOTAL_THICKNESS_COLUMN,
+    TARGET_COLUMN,
+]
+FEATURE_COLUMNS = [
+    CONCENTRATION_COLUMN,
+    UNCOATED_LAYER_COLUMN,
+    TOTAL_THICKNESS_COLUMN,
+]
 
 
 @dataclass
@@ -28,8 +42,12 @@ class PreparedData:
     y_scaler: StandardScaler
 
 
+def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    return df.rename(columns={col: COLUMN_ALIASES.get(col, col) for col in df.columns})
+
+
 def load_dataset(path: str) -> pd.DataFrame:
-    df = pd.read_csv(path)
+    df = normalize_columns(pd.read_csv(path))
     missing = [col for col in REQUIRED_COLUMNS if col not in df.columns]
     if missing:
         raise ValueError(f"Dataset missing required columns: {missing}")
@@ -39,7 +57,7 @@ def load_dataset(path: str) -> pd.DataFrame:
 
 
 def feature_columns(df: pd.DataFrame) -> list[str]:
-    return [col for col in df.columns if col != TARGET_COLUMN]
+    return [col for col in FEATURE_COLUMNS if col in df.columns]
 
 
 def prepare_train_test(

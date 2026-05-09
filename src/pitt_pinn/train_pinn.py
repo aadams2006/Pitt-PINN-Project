@@ -8,7 +8,13 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from .data import TARGET_COLUMN, load_dataset, prepare_train_test
+from .data import (
+    TARGET_COLUMN,
+    TOTAL_THICKNESS_COLUMN,
+    CONCENTRATION_COLUMN,
+    load_dataset,
+    prepare_train_test,
+)
 from .models import PINNRegressor
 from .physics import (
     bounded_by_total_penalty,
@@ -46,10 +52,18 @@ def main() -> None:
 
     history = []
 
-    total_idx = x_cols.index("total_film_thickness") if "total_film_thickness" in x_cols else None
-    conc_idx = x_cols.index("pdms_concentration") if "pdms_concentration" in x_cols else None
+    total_idx = x_cols.index(TOTAL_THICKNESS_COLUMN) if TOTAL_THICKNESS_COLUMN in x_cols else None
+    conc_idx = x_cols.index(CONCENTRATION_COLUMN) if CONCENTRATION_COLUMN in x_cols else None
     visc_idx = x_cols.index("viscosity") if "viscosity" in x_cols else None
     vel_idx = x_cols.index("withdrawal_velocity") if "withdrawal_velocity" in x_cols else None
+
+    y_scale = torch.tensor(float(prepared.y_scaler.scale_[0]), dtype=torch.float32)
+    y_mean = torch.tensor(float(prepared.y_scaler.mean_[0]), dtype=torch.float32)
+    total_scale = None
+    total_mean = None
+    if total_idx is not None:
+        total_scale = torch.tensor(float(prepared.x_scaler.scale_[total_idx]), dtype=torch.float32)
+        total_mean = torch.tensor(float(prepared.x_scaler.mean_[total_idx]), dtype=torch.float32)
 
     for epoch in range(args.epochs):
         optimizer.zero_grad()
@@ -59,8 +73,9 @@ def main() -> None:
         physics_loss = torch.tensor(0.0)
 
         if total_idx is not None:
-            total_col = x_train[:, total_idx].view(-1, 1)
-            physics_loss = physics_loss + bounded_by_total_penalty(pred, total_col)
+            pred_unscaled = pred * y_scale + y_mean
+            total_col_unscaled = x_train[:, total_idx].view(-1, 1) * total_scale + total_mean
+            physics_loss = physics_loss + bounded_by_total_penalty(pred_unscaled, total_col_unscaled)
 
         grads = torch.autograd.grad(
             outputs=pred,
@@ -106,11 +121,13 @@ def main() -> None:
     }
 
     if total_idx is not None:
-        total_test = x_test[:, total_idx].view(-1, 1)
+        total_test_scale = float(prepared.x_scaler.scale_[total_idx])
+        total_test_mean = float(prepared.x_scaler.mean_[total_idx])
+        total_test = x_test[:, total_idx].view(-1, 1).numpy() * total_test_scale + total_test_mean
         report.update(
             constraint_report(
-                torch.tensor(pred_test, dtype=torch.float32),
-                total_test,
+                torch.tensor(pred_test_unscaled, dtype=torch.float32),
+                torch.tensor(total_test, dtype=torch.float32),
             )
         )
 

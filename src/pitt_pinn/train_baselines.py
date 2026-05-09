@@ -6,8 +6,9 @@ from pathlib import Path
 
 from joblib import dump
 
+from baseline_models import build_baseline_models
 from .data import load_dataset, prepare_train_test
-from .models import build_baseline_models, evaluate_regression
+from .models import evaluate_regression
 
 
 def parse_args() -> argparse.Namespace:
@@ -26,6 +27,11 @@ def main() -> None:
     prepared = prepare_train_test(df)
 
     metrics = {}
+    metadata = {
+        "feature_columns": prepared.x_train.columns.tolist(),
+        "target_column": prepared.y_train.name,
+        "model_names": [],
+    }
 
     for name, model in build_baseline_models(len(prepared.x_train)).items():
         try:
@@ -33,6 +39,7 @@ def main() -> None:
             preds = model.predict(prepared.x_test)
             m = evaluate_regression(prepared.y_test.to_numpy(), preds)
             metrics[name] = {"mae": m.mae, "rmse": m.rmse, "r2": m.r2}
+            metadata["model_names"].append(name)
             dump(model, outdir / f"{name}.joblib")
         except Exception as exc:
             metrics[name] = {"error": str(exc)}
@@ -42,6 +49,10 @@ def main() -> None:
 
     with open(outdir / "metrics.json", "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
+
+    with open(outdir / "metadata.json", "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2)
+
 
 
 if __name__ == "__main__":

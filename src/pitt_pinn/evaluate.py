@@ -17,7 +17,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--data", required=True)
     parser.add_argument("--baseline-dir", required=True)
     parser.add_argument("--pinn-model", required=True)
-    parser.add_argument("--ood-column", default="withdrawal_velocity")
+    parser.add_argument("--ood-column", default="pdms_concentration")
     parser.add_argument("--outdir", default="outputs/eval")
     return parser.parse_args()
 
